@@ -30,6 +30,8 @@ def str_to_time(string):
             tim += int(sp[i])*60*24
         i += 2
     return tim
+
+
 def valid_num(num):
     try:
         return float(num)

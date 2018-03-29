@@ -7,6 +7,19 @@ from user_agent import generate_user_agent
 # importing the necessary modules
 
 
+def get_meal(soup):
+    try:
+        tag = soup.findAll('span', attrs = {'class': 'toggle-similar__title', 'itemprop': 'name'})[2]
+        return tag.contents[0].strip()
+    except AttributeError:
+        return "N/A"
+    except IndexError:
+        tag = soup.findAll('span', attrs = {'class': 'toggle-similar__title', 'itemprop': 'name'})
+        return tag[len(tag) - 1].contents[0]
+
+
+
+
 def get_time(soup):
     try:
         tag = soup.find('span', attrs = {'class': 'ready-in-time'})
@@ -18,7 +31,7 @@ def get_time(soup):
 
 def get_name(soup):
     tag = soup.find('h1', attrs = {'class': 'recipe-summary__h1'})
-    return tag.contents[0]
+    return tag.contents[0].replace('�', '')
 # a method that returns the name of a recipe
 
 
@@ -34,7 +47,7 @@ def get_ingredients(soup):
     for li in lists:
         tag = li.find('span', attrs = {'itemprop': 'ingredients'})
         try:
-            array.append(tag.contents[0])
+            array.append(tag.contents[0].replace('�', ''))
         except AttributeError:
             break
     return array
@@ -55,7 +68,7 @@ def get_proxy():
         try:
             if temp2 != '3128':
                 raise Exception
-            create_recipe(8000, temp)
+            create_recipe_test(8000, temp)
             print("It worked!")
             return temp
         except Exception:
@@ -64,7 +77,7 @@ def get_proxy():
 # This method scrapes a free proxy website that updates regularly to find a working proxy
 
 
-def create_recipe(num, proxy):
+def create_recipe_test(num, proxy):
     url = 'http://allrecipes.com/recipe/' + str(num)
     req = requests.get(url, proxies={'http': proxy},
                      headers={'User-Agent': generate_user_agent(device_type="desktop", os=('mac', 'linux'))})
@@ -83,7 +96,32 @@ def create_recipe(num, proxy):
         temp+=i+' // '
     text += temp
     return text
+
+
+def create_recipe(num, proxy, tfile):
+    url = 'http://allrecipes.com/recipe/' + str(num)
+    req = requests.get(url, proxies={'http': proxy},
+                     headers={'User-Agent': generate_user_agent(device_type="desktop", os=('mac', 'linux'))})
+    page = req.text
+    soup = BeautifulSoup(page, 'html.parser')
+    tim = get_time(soup)
+    name = get_name(soup)
+    rating = get_rating(soup)
+    ingredients = get_ingredients(soup)
+    text = ''
+    text += name+', '
+    text += tim+', '
+    text += rating+', '
+    temp = ''
+    for i in ingredients:
+        temp+=i+' // '
+    text += temp
+    meal = get_meal(soup)
+    tfile.write(meal)
+    tfile.write('\n')
+    return text
 # a method to create a csv formatted text block for a recipe
+
 
 
 recipes = []
@@ -94,28 +132,30 @@ while proxy == '':
     proxy = get_proxy()
 
 print('Using proxy '+proxy)
-with open('recipes.csv', 'a+') as txtfile:
-    i = 15991
-    while i <= 18000:
-        try:
-            temp = create_recipe(i, proxy)
-            recipes.append(temp)
-            txtfile.write(temp)
-            txtfile.write('\n')
-            print(str(i - 6999) + ' out of 11000')
-            i = i+1
-            attempts = 0
-            # try to write out the recipe to CSV
-        except Exception as e:
-            print(e)
-            proxy = ''
-            while proxy == '':
-                proxy = get_proxy()
-            print('Using proxy ' + proxy)
-            if attempts == 1:
+with open('recipesNew.csv', 'a+') as txtfile:
+    with open('meals.csv', 'a+') as tfile:
+        i = 18000
+        while i < 18027:
+            try:
+                temp = create_recipe(i, proxy,tfile)
+
+                recipes.append(temp)
+                txtfile.write(temp)
+                txtfile.write('\n')
+                print(str(i - 7999) + ' out of 11000')
                 i = i+1
-            else:
-                attempts = attempts + 1
-            # if an exception is caught, assume that it must be from the proxy and find a new working proxy
-    # populating an array of recipes
+                attempts = 0
+                # try to write out the recipe to CSV
+            except Exception as e:
+                print(e)
+                proxy = ''
+                while proxy == '':
+                    proxy = get_proxy()
+                print('Using proxy ' + proxy)
+                if attempts == 1:
+                    i = i+1
+                else:
+                    attempts = attempts + 1
+                # if an exception is caught, assume that it must be from the proxy and find a new working proxy
+        # populating an array of recipes
 # writing the recipes to a csv file
